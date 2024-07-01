@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voting System</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Voting System</h1>
+        <form id="vote-form">
+            <label for="phrase">Enter your phrase:</label>
+            <input type="text" id="phrase" name="phrase" required>
+            <button type="submit">Submit</button>
+        </form>
+        <p id="message"></p>
+        {% if end_time %}
+            <p class="timer">Time left: <span id="timer"></span></p>
+        {% endif %}
+    </div>
+    <script>
+        $(document).ready(function() {
+            var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+            $('#vote-form').on('submit', function(event) {
+                event.preventDefault();
+                $.ajax({
+                    type: 'POST',
+                    url: '/submit',
+                    data: {
+                        phrase: $('#phrase').val()
+                    },
+                    success: function(response) {
+                        $('#message').text(response.success || response.error);
+                        if (response.success) {
+                            $('#phrase').val('');
+                        }
+                    }
+                });
+            });
+
+            socket.on('start_timer', function(data) {
+                var endTime = new Date(data.end_time);
+                var timerInterval = setInterval(function() {
+                    var now = new Date().getTime();
+                    var timeLeft = endTime - now;
+
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        $('#timer').text('Voting period has ended.');
+                    } else {
+                        var minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                        var seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                        $('#timer').text(minutes + 'm ' + seconds + 's ');
+                    }
+                }, 1000);
+            });
+        });
+    </script>
+</body>
+</html>
